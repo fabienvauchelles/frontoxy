@@ -20,7 +20,7 @@ class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
     def __init__(self, crawler):
         super(BlacklistDownloaderMiddleware, self).__init__(crawler)
 
-        self._http_status_code = crawler.settings.get('BLACKLIST_HTTP_STATUS_CODE', 503)
+        self._http_status_codes = crawler.settings.get('BLACKLIST_HTTP_STATUS_CODES', [503])
         self._sleep_min = crawler.settings.get('SCRAPOXY_SLEEP_MIN', 60)
         self._sleep_max = crawler.settings.get('SCRAPOXY_SLEEP_MAX', 180)
 
@@ -37,8 +37,8 @@ class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
 
     def process_response(self, request, response, spider):
         try:
-            if response.status == self._http_status_code:
-                raise BlacklistError(response, u'HTTP status '.format(self._http_status_code))
+            if response.status in self._http_status_codes:
+                raise BlacklistError(response, u'HTTP status '.format(response.status))
 
             return response
 
