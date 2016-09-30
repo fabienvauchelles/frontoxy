@@ -26,9 +26,11 @@ class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
         self._login = crawler.settings.get('LUMINATI_LOGIN')
         self._password = crawler.settings.get('LUMINATI_PASSWORD')
         self._zone = crawler.settings.get('LUMINATI_ZONE')
-        self._reset_session()
 
         self._user_agent = crawler.settings.get('USER_AGENT')
+
+        self._counter_max = crawler.settings.get('BACKLIST_MAX_REQUESTS', 10)
+        self._reset_session()
 
 
     @classmethod
@@ -44,8 +46,14 @@ class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
 
     def process_response(self, request, response, spider):
         try:
+            self._counter += 1
+
             if response.status in self._http_status_codes:
                 raise BlacklistError(response, u'HTTP status '.format(response.status))
+
+            if self._counter > self._counter_max:
+                logger.debug(u'Max requests: Change IP')
+                self._reset_session()
 
             return response
 
@@ -66,3 +74,4 @@ class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
         username = u'lum-customer-{0}-zone-{1}-session-{2}'.format(self._login, self._zone, session_id)
         clear_auth = u'{0}:{1}'.format(username, self._password)
         self._proxy_auth = b'Basic {0}'.format(base64.b64encode(clear_auth))
+        self._counter = 0
