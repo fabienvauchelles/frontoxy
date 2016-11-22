@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
 
+    PROXY_URL = 'http://zproxy.luminati.io:22225'
+
     def __init__(self, crawler):
         super(BlacklistDownloaderMiddleware, self).__init__(crawler)
 
         self._http_status_codes = crawler.settings.get('BLACKLIST_HTTP_STATUS_CODES', [503])
 
-        superproxy_country = crawler.settings.get('LUMINATI_SUPERPROXY_COUNTRY', 'uk')
-        self._proxy_url = 'http://servercountry-{0}.zproxy.luminati.io:22225'.format(superproxy_country)
         self._login = crawler.settings.get('LUMINATI_LOGIN')
         self._password = crawler.settings.get('LUMINATI_PASSWORD')
         self._zone = crawler.settings.get('LUMINATI_ZONE')
@@ -39,18 +39,17 @@ class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
 
 
     def process_request(self, request, spider):
-        request.meta['proxy'] = self._proxy_url
+        request.meta['proxy'] = self.PROXY_URL
         request.headers['Proxy-Authorization'] = self._proxy_auth
         request.headers['User-Agent'] = self._user_agent
 
 
     def process_response(self, request, response, spider):
         try:
-            self._counter += 1
-
             if response.status in self._http_status_codes:
                 raise BlacklistError(response, u'HTTP status '.format(response.status))
 
+            self._counter += 1
             if self._counter > self._counter_max:
                 logger.debug(u'Max requests: Change IP')
                 self._reset_session()
@@ -67,6 +66,17 @@ class BlacklistDownloaderMiddleware(BaseSchedulerMiddleware):
             self.scheduler.process_exception(request, ex, spider)
 
             raise IgnoreRequest()
+
+
+    def process_exception(self, request, exception, spider):
+        logger.debug(
+                u'Ignoring Exception: %(message)r',
+                {'message': exception.message}, extra={'spider': spider},
+            )
+
+        self._reset_session()
+        self.scheduler.process_exception(request, exception, spider)
+        raise IgnoreRequest()
 
 
     def _reset_session(self):
