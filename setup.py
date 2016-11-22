@@ -7,7 +7,7 @@ except ImportError:
 setup(
     name='frontoxy',
     packages=find_packages(),
-    install_requires=['pika', 'scrapoxy', 'scrapy'],
+    install_requires=['pika', 'scrapy'],
     version='1.0.2',
     description='Distributed URLs frontier for Scrapy with RabbitMQ',
     author='Fabien Vauchelles',
